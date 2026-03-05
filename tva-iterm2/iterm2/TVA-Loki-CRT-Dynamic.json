@@ -1,0 +1,78 @@
+{
+  "Profiles": [
+    {
+      "Name": "TVA Screen",
+      "Guid": "0FC4D0FB-B7C8-4A3A-A2D2-7E19E1BC0D5C",
+      "Dynamic Profile Parent Name": "Default",
+
+      "Normal Font": "IBMPlexMono 15",
+      "ASCII Anti Aliased": false,
+      "Non-ASCII Anti Aliased": false,
+      "Use Bright Bold": false,
+      "Use Non-ASCII Font": false,
+      "Horizontal Spacing": 1.0,
+
+      "Background Image Location": "",
+      "Background Image Is Tiled": false,
+      "Blend": 0.0,
+      "Blur": false,
+      "Blur Radius": 0.0,
+      "Transparency": 0.0,
+
+      "Background Color": {
+        "Color Space": "sRGB",
+        "Red Component": 0.086274,
+        "Green Component": 0.050980,
+        "Blue Component": 0.023529
+      },
+      "Foreground Color": {
+        "Color Space": "sRGB",
+        "Red Component": 0.862745,
+        "Green Component": 0.588235,
+        "Blue Component": 0.184314
+      },
+      "Cursor Color": {
+        "Color Space": "sRGB",
+        "Red Component": 0.862745,
+        "Green Component": 0.588235,
+        "Blue Component": 0.184314
+      },
+      "Cursor Text Color": {
+        "Color Space": "sRGB",
+        "Red Component": 0.086274,
+        "Green Component": 0.050980,
+        "Blue Component": 0.023529
+      },
+      "Selection Color": {
+        "Color Space": "sRGB",
+        "Red Component": 0.451000,
+        "Green Component": 0.235000,
+        "Blue Component": 0.050000
+      },
+      "Selected Text Color": {
+        "Color Space": "sRGB",
+        "Red Component": 0.086274,
+        "Green Component": 0.050980,
+        "Blue Component": 0.023529
+      },
+
+      "Ansi 0 Color": {"Color Space": "sRGB", "Red Component": 0.133333, "Green Component": 0.078431, "Blue Component": 0.031373},
+      "Ansi 1 Color": {"Color Space": "sRGB", "Red Component": 0.549020, "Green Component": 0.317647, "Blue Component": 0.098039},
+      "Ansi 2 Color": {"Color Space": "sRGB", "Red Component": 0.619608, "Green Component": 0.364706, "Blue Component": 0.109804},
+      "Ansi 3 Color": {"Color Space": "sRGB", "Red Component": 0.760784, "Green Component": 0.490196, "Blue Component": 0.145098},
+      "Ansi 4 Color": {"Color Space": "sRGB", "Red Component": 0.509804, "Green Component": 0.290196, "Blue Component": 0.086275},
+      "Ansi 5 Color": {"Color Space": "sRGB", "Red Component": 0.678431, "Green Component": 0.403922, "Blue Component": 0.121569},
+      "Ansi 6 Color": {"Color Space": "sRGB", "Red Component": 0.572549, "Green Component": 0.345098, "Blue Component": 0.101961},
+      "Ansi 7 Color": {"Color Space": "sRGB", "Red Component": 0.843137, "Green Component": 0.572549, "Blue Component": 0.176471},
+
+      "Ansi 8 Color": {"Color Space": "sRGB", "Red Component": 0.266667, "Green Component": 0.149020, "Blue Component": 0.050980},
+      "Ansi 9 Color": {"Color Space": "sRGB", "Red Component": 0.650980, "Green Component": 0.372549, "Blue Component": 0.113725},
+      "Ansi 10 Color": {"Color Space": "sRGB", "Red Component": 0.713725, "Green Component": 0.427451, "Blue Component": 0.129412},
+      "Ansi 11 Color": {"Color Space": "sRGB", "Red Component": 0.882353, "Green Component": 0.611765, "Blue Component": 0.196078},
+      "Ansi 12 Color": {"Color Space": "sRGB", "Red Component": 0.600000, "Green Component": 0.337255, "Blue Component": 0.101961},
+      "Ansi 13 Color": {"Color Space": "sRGB", "Red Component": 0.780392, "Green Component": 0.470588, "Blue Component": 0.149020},
+      "Ansi 14 Color": {"Color Space": "sRGB", "Red Component": 0.670588, "Green Component": 0.396078, "Blue Component": 0.121569},
+      "Ansi 15 Color": {"Color Space": "sRGB", "Red Component": 0.941176, "Green Component": 0.705882, "Blue Component": 0.266667}
+    }
+  ]
+}
