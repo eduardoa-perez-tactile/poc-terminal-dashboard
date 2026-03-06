@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Tva.Core\Tva.Core.csproj" />
+    <ProjectReference Include="..\Tva.Contracts\Tva.Contracts.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

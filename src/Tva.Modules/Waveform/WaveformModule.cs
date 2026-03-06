@@ -1,63 +1,47 @@
-using Tva.Application;
+using Tva.Contracts;
 using Tva.Core;
 using Tva.Core.Ids;
 
 namespace Tva.Modules;
 
-public sealed class WaveformModule : IAppModule
+public sealed class WaveformModule : IModule
 {
-    public AppModuleInfo Metadata { get; } = new(
-        "waveform",
-        "Waveform",
-        "Simple live timeline widget.",
-        "[W]");
+    public string Id => "waveform";
 
-    public IReadOnlyList<NavigationEntry> NavigationEntries { get; } =
-    [
-        new("waveform", ScreenCatalog.Waveform, "Waveform", "5", 50)
-    ];
+    public string DisplayName => "Waveform";
 
-    public IReadOnlyList<IScreenProvider> Screens { get; } =
-    [
-        new WaveformScreenProvider()
-    ];
-
-    public IReadOnlyList<PanelModel> GetDashboardPanels(AppSessionState state)
+    public void Register(IModuleContext context)
     {
-        var latest = state.WaveformSamples.Count > 0
-            ? state.WaveformSamples[^1]
-            : 0;
+        context.RegisterNavigation(new NavigationEntry(Id, ScreenCatalog.Waveform, "Waveform", "5", 50));
+        context.RegisterScreen(ScreenCatalog.Waveform, new WaveformScreenProvider());
 
-        return
-        [
-            new PanelModel(
+        context.RegisterDashboardPanel(state =>
+        {
+            var latest = state.WaveformSamples.Count > 0
+                ? state.WaveformSamples[^1]
+                : 0;
+
+            return new PanelModel(
                 "Timeline",
                 [
                     $"Latest amplitude: {latest}",
                     $"Samples tracked: {state.WaveformSamples.Count}"
-                ])
-        ];
-    }
+                ]);
+        });
 
-    public IReadOnlyList<StatusItem> GetStatusItems(AppSessionState state)
-    {
-        var latest = state.WaveformSamples.Count > 0
-            ? state.WaveformSamples[^1]
-            : 0;
+        context.RegisterStatusItem(state =>
+        {
+            var latest = state.WaveformSamples.Count > 0
+                ? state.WaveformSamples[^1]
+                : 0;
 
-        return
-        [
-            new StatusItem("Pulse", latest.ToString())
-        ];
+            return new StatusItem("Pulse", latest.ToString());
+        });
     }
 
     private sealed class WaveformScreenProvider : IScreenProvider
     {
-        public ScreenId ScreenId => ScreenCatalog.Waveform;
-
-        public string ModuleId => "waveform";
-
-        public ScreenViewModel Build(AppSessionState state)
+        public ScreenViewModel Create(IModuleState state)
         {
             return new ScreenViewModel(
                 ScreenCatalog.Waveform,

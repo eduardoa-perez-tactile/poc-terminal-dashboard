@@ -1,55 +1,34 @@
-using Tva.Application;
+using Tva.Contracts;
 using Tva.Core;
 using Tva.Core.Ids;
 
 namespace Tva.Modules;
 
-public sealed class EventsModule : IAppModule
+public sealed class EventsModule : IModule
 {
-    public AppModuleInfo Metadata { get; } = new(
-        "events",
-        "Events",
-        "Rolling event and log stream.",
-        "[E]");
+    public string Id => "events";
 
-    public IReadOnlyList<NavigationEntry> NavigationEntries { get; } =
-    [
-        new("events", ScreenCatalog.Events, "Events", "3", 30)
-    ];
+    public string DisplayName => "Events";
 
-    public IReadOnlyList<IScreenProvider> Screens { get; } =
-    [
-        new EventsScreenProvider()
-    ];
-
-    public IReadOnlyList<PanelModel> GetDashboardPanels(AppSessionState state)
+    public void Register(IModuleContext context)
     {
-        return
-        [
+        context.RegisterNavigation(new NavigationEntry(Id, ScreenCatalog.Events, "Events", "3", 30));
+        context.RegisterScreen(ScreenCatalog.Events, new EventsScreenProvider());
+
+        context.RegisterDashboardPanel(state =>
             new PanelModel(
                 "Event Bus",
                 [
                     $"Buffered events: {state.Events.Count}",
                     $"Recent: {state.Events.FirstOrDefault() ?? "none"}"
-                ])
-        ];
-    }
+                ]));
 
-    public IReadOnlyList<StatusItem> GetStatusItems(AppSessionState state)
-    {
-        return
-        [
-            new StatusItem("Events", state.Events.Count.ToString())
-        ];
+        context.RegisterStatusItem(state => new StatusItem("Events", state.Events.Count.ToString()));
     }
 
     private sealed class EventsScreenProvider : IScreenProvider
     {
-        public ScreenId ScreenId => ScreenCatalog.Events;
-
-        public string ModuleId => "events";
-
-        public ScreenViewModel Build(AppSessionState state)
+        public ScreenViewModel Create(IModuleState state)
         {
             var rows = state.Events
                 .Take(30)

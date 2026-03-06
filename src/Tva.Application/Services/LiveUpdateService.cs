@@ -12,7 +12,7 @@ public sealed class LiveUpdateService
         _clock = clock;
     }
 
-    public void Initialize(AppSessionState state)
+    public void Initialize(ISessionState state)
     {
         state.Now = _clock.UtcNow.ToLocalTime();
         state.Alerts.Add(new AlertModel("Core", "Chrono relay synced", SeverityLevel.Info, state.Now));
@@ -29,7 +29,7 @@ public sealed class LiveUpdateService
         }
     }
 
-    public void Tick(AppSessionState state)
+    public void Tick(ISessionState state)
     {
         state.TickCount++;
         state.Now = _clock.UtcNow.ToLocalTime();

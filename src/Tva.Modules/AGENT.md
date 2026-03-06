@@ -1,10 +1,10 @@
 # AGENT.md (Tva.Modules)
 
 ## Purpose
-- Implement feature modules and screen providers using core/application abstractions.
+- Implement feature modules and screen providers using core/contracts abstractions.
 
 ## What Code Is Allowed Here
-- `IAppModule` implementations.
+- `IModule` implementations.
 - `IScreenProvider` implementations.
 - Feature-specific mock content for dashboard/alerts/events/terminal/waveform.
 
@@ -15,17 +15,18 @@
 
 ## Dependencies Allowed
 - `Tva.Core`.
-- `Tva.Application` abstractions/state.
+- `Tva.Contracts`.
 
 ## Dependencies Forbidden
 - `Tva.Tui`, `Tva.Desktop`, `Spectre.Console`, `Avalonia`.
 
 ## Architectural Rules
-- Each module should expose metadata, nav entries, and screen providers.
+- Each module should expose metadata, nav entries, and screen providers through `IModuleContext`.
 - Modules may contribute dashboard panels and status items.
 - Keep module logic lightweight and composition-friendly.
+- Modules must never depend on `Tva.Application`.
 
 ## How AI Agents Should Add Features
-- Add a new module class implementing `IAppModule`.
+- Add a new module class implementing `IModule`.
 - Register it in `ModuleBootstrap.CreateModules()`.
 - Keep screen models UI-agnostic (`ScreenViewModel`, `PanelModel`, `TableModel`, etc.).

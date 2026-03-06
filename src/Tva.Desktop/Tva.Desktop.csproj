@@ -1,12 +1,5 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <ItemGroup>
-    <ProjectReference Include="..\Tva.Core\Tva.Core.csproj" />
-    <ProjectReference Include="..\Tva.Application\Tva.Application.csproj" />
-    <ProjectReference Include="..\Tva.Modules\Tva.Modules.csproj" />
-    <ProjectReference Include="..\Tva.Theme\Tva.Theme.csproj" />
-  </ItemGroup>
-
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>

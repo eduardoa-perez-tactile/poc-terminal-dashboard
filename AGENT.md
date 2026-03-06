@@ -20,14 +20,22 @@
 - Any runtime package references in root files.
 
 ## Architectural Rules
-- `Tva.Core` and `Tva.Application` must remain UI-framework-agnostic.
-- `Tva.Tui` is the only Spectre.Console-dependent layer.
-- `Tva.Desktop` is a placeholder until Avalonia is introduced.
+- Layer rules: `Core` has no dependencies.
+- Layer rules: `Contracts` depends only on `Core`.
+- Layer rules: `Application` depends on `Core` + `Contracts`.
+- Layer rules: `Modules` depends on `Core` + `Contracts`.
+- Layer rules: `Theme` depends only on `Core`.
+- Layer rules: `Tui` depends on `Application` + `Modules` + `Theme` + `Contracts` + `Core`.
+- Layer rules: `Tui` is the only project allowed to use `Spectre.Console`.
+- Layer rules: `Desktop` is the future Avalonia frontend.
+- Strict rule: modules must never depend on `Application`.
+- Rendering rule: view models must remain UI-agnostic and live outside the TUI layer.
 - Prefer plain classes/interfaces; no MediatR/CQRS/plugin framework.
 - No tests in this prototype phase.
 
 ## How AI Agents Should Add Features
 - Add or extend domain models in `src/Tva.Core` first.
+- Add or extend extension contracts in `src/Tva.Contracts` for module/application seams.
 - Add orchestration/state/service logic in `src/Tva.Application`.
 - Add feature modules/screens in `src/Tva.Modules`.
 - Add or adjust semantic tokens in `src/Tva.Theme`.

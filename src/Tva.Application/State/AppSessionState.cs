@@ -1,9 +1,10 @@
+using Tva.Contracts;
 using Tva.Core;
 using Tva.Core.Ids;
 
 namespace Tva.Application;
 
-public sealed class AppSessionState
+public sealed class AppSessionState : ISessionState, IModuleState
 {
     public ScreenId ActiveScreenId { get; set; } = ScreenCatalog.Boot;
     public Stack<ScreenId> BackStack { get; } = new();
@@ -18,4 +19,12 @@ public sealed class AppSessionState
     public int TickCount { get; set; }
     public bool ShowWarning { get; set; }
     public string? WarningMessage { get; set; }
+
+    public IModuleState AsModuleState() => this;
+
+    IReadOnlyList<AlertModel> IModuleState.Alerts => Alerts;
+    IReadOnlyList<string> IModuleState.Events => Events;
+    IReadOnlyList<int> IModuleState.WaveformSamples => WaveformSamples;
+    IReadOnlyList<PanelModel> IModuleState.DashboardPanels => DashboardPanels;
+    ITerminalState IModuleState.Terminal => Terminal;
 }
