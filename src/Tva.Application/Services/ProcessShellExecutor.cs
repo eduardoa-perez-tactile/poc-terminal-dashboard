@@ -1,10 +1,11 @@
 using System.Diagnostics;
 using System.Text;
+using System.Threading.Channels;
 using Tva.Core;
 
 namespace Tva.Application;
 
-public sealed class ProcessShellExecutor : IShellExecutor
+public sealed class ProcessShellExecutor : IShellExecutor, ITerminalSessionFactory
 {
     public async Task<TerminalCommandResult> ExecuteAsync(
         TerminalCommand command,
@@ -111,6 +112,38 @@ public sealed class ProcessShellExecutor : IShellExecutor
         catch
         {
             // Best-effort cancellation cleanup.
+        }
+    }
+
+    public ITerminalSession Create() => new ProcessTerminalSession();
+
+    private sealed class ProcessTerminalSession : ITerminalSession
+    {
+        private readonly Channel<string> _output = Channel.CreateUnbounded<string>();
+        private bool _closed;
+
+        public IAsyncEnumerable<string> Output => _output.Reader.ReadAllAsync();
+
+        public void SendInput(string input)
+        {
+            if (_closed)
+            {
+                throw new InvalidOperationException("Terminal session is closed.");
+            }
+
+            _output.Writer.TryWrite($"Interactive terminal session is not implemented yet. Input received: {input}");
+        }
+
+        public Task CloseAsync()
+        {
+            if (_closed)
+            {
+                return Task.CompletedTask;
+            }
+
+            _closed = true;
+            _output.Writer.TryComplete();
+            return Task.CompletedTask;
         }
     }
 }

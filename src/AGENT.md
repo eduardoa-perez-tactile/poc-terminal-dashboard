@@ -4,7 +4,7 @@
 - Host all runtime projects for the TVA workspace prototype.
 
 ## What Code Is Allowed Here
-- Project directories only (`Tva.Core`, `Tva.Application`, `Tva.Modules`, `Tva.Theme`, `Tva.Tui`, `Tva.Desktop`).
+- Project directories only (`Tva.Core`, `Tva.Contracts`, `Tva.Application`, `Tva.Modules`, `Tva.Theme`, `Tva.Tui`, `Tva.Desktop`).
 
 ## What Must NOT Go Here
 - Loose feature files directly under `/src`.
@@ -14,10 +14,10 @@
 - Project-to-project references according to layer rules.
 
 ## Dependencies Forbidden
-- Referencing UI projects (`Tva.Tui`, future `Tva.Desktop`) from `Tva.Core`, `Tva.Application`, or `Tva.Modules`.
+- Referencing UI projects (`Tva.Tui`, future `Tva.Desktop`) from `Tva.Core`, `Tva.Contracts`, `Tva.Application`, or `Tva.Modules`.
 
 ## Architectural Rules
-- Keep dependency direction inward: UI -> Modules/Application/Core/Theme.
+- Keep dependency direction inward: UI -> Modules/Application/Contracts/Core/Theme.
 - Theme intent lives in `Tva.Theme`; rendering details live in UI projects.
 
 ## How AI Agents Should Add Features

@@ -1,3 +1,4 @@
+using Tva.Contracts;
 using Tva.Core;
 using Tva.Core.Ids;
 
@@ -5,26 +6,33 @@ namespace Tva.Application;
 
 public sealed class WorkspaceApp
 {
-    private readonly ModuleRegistry _moduleRegistry;
+    private readonly IModuleCatalog _moduleCatalog;
+    private readonly INavigationService _navigation;
+    private readonly ISessionState _state;
+    private readonly INotificationService _notifications;
     private readonly TerminalCommandService _terminalCommands;
     private readonly LiveUpdateService _liveUpdates;
     private readonly AppTheme _theme;
-    private readonly AppSessionState _state;
 
     public WorkspaceApp(
-        ModuleRegistry moduleRegistry,
+        IModuleCatalog moduleCatalog,
+        INavigationService navigation,
+        ISessionState state,
+        INotificationService notifications,
         TerminalCommandService terminalCommands,
         LiveUpdateService liveUpdates,
         AppTheme theme)
     {
-        _moduleRegistry = moduleRegistry;
+        _moduleCatalog = moduleCatalog;
+        _navigation = navigation;
+        _state = state;
+        _notifications = notifications;
         _terminalCommands = terminalCommands;
         _liveUpdates = liveUpdates;
         _theme = theme;
-        _state = new AppSessionState();
     }
 
-    public ScreenId ActiveScreenId => _state.ActiveScreenId;
+    public ScreenId ActiveScreenId => _navigation.ActiveScreenId;
 
     public bool IsTerminalActive => _state.ActiveScreenId == ScreenCatalog.Terminal;
 
@@ -33,7 +41,7 @@ public sealed class WorkspaceApp
     public void Initialize()
     {
         _liveUpdates.Initialize(_state);
-        _state.Notifications.Add(new AppNotification("Boot sequence started.", SeverityLevel.Info, _state.Now));
+        _notifications.Add("Boot sequence started.", SeverityLevel.Info);
     }
 
     public void Tick()
@@ -41,12 +49,12 @@ public sealed class WorkspaceApp
         _liveUpdates.Tick(_state);
 
         _state.DashboardPanels.Clear();
-        _state.DashboardPanels.AddRange(_moduleRegistry.BuildDashboardPanels(_state));
+        _state.DashboardPanels.AddRange(_moduleCatalog.BuildDashboardPanels(_state.AsModuleState()));
 
         if (_state.ActiveScreenId == ScreenCatalog.Boot && _state.TickCount > 10)
         {
-            NavigateTo(ScreenCatalog.Home);
-            _state.Notifications.Add(new AppNotification("Boot complete.", SeverityLevel.Info, _state.Now));
+            _navigation.NavigateTo(ScreenCatalog.Home);
+            _notifications.Add("Boot complete.", SeverityLevel.Info);
         }
     }
 
@@ -54,7 +62,7 @@ public sealed class WorkspaceApp
     {
         var activeScreen = _state.ActiveScreenId == ScreenCatalog.Boot
             ? BuildBootScreen()
-            : _moduleRegistry.BuildScreen(_state.ActiveScreenId, _state);
+            : _moduleCatalog.BuildScreen(_state.ActiveScreenId, _state.AsModuleState());
 
         var statusItems = new List<StatusItem>
         {
@@ -63,16 +71,16 @@ public sealed class WorkspaceApp
             new("Alerts", _state.Alerts.Count.ToString())
         };
 
-        statusItems.AddRange(_moduleRegistry.BuildStatusItems(_state));
+        statusItems.AddRange(_moduleCatalog.BuildStatusItems(_state.AsModuleState()));
 
         return new AppShellModel(
             "TVA Workspace Prototype",
             "Retro command nexus",
             _state.ActiveScreenId,
-            _moduleRegistry.Navigation,
+            _moduleCatalog.Navigation,
             activeScreen,
             statusItems,
-            _state.Notifications.LastOrDefault(),
+            _notifications.Latest,
             _state.ShowWarning,
             _state.WarningMessage,
             _theme);
@@ -80,60 +88,22 @@ public sealed class WorkspaceApp
 
     public void NavigateTo(ScreenId screenId)
     {
-        if (_state.ActiveScreenId == screenId)
-        {
-            return;
-        }
-
-        _state.BackStack.Push(_state.ActiveScreenId);
-        _state.ActiveScreenId = screenId;
+        _navigation.NavigateTo(screenId);
     }
 
     public void NavigateNext()
     {
-        var entries = _moduleRegistry.Navigation;
-        if (entries.Count == 0)
-        {
-            return;
-        }
-
-        var currentIndex = entries
-            .Select(static (entry, index) => new { entry, index })
-            .FirstOrDefault(x => x.entry.ScreenId == _state.ActiveScreenId)?.index ?? -1;
-
-        var nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % entries.Count;
-        NavigateTo(entries[nextIndex].ScreenId);
+        _navigation.NavigateNext(_moduleCatalog.Navigation);
     }
 
     public void NavigatePrevious()
     {
-        var entries = _moduleRegistry.Navigation;
-        if (entries.Count == 0)
-        {
-            return;
-        }
-
-        var currentIndex = entries
-            .Select(static (entry, index) => new { entry, index })
-            .FirstOrDefault(x => x.entry.ScreenId == _state.ActiveScreenId)?.index ?? 0;
-
-        var previousIndex = currentIndex - 1;
-        if (previousIndex < 0)
-        {
-            previousIndex = entries.Count - 1;
-        }
-
-        NavigateTo(entries[previousIndex].ScreenId);
+        _navigation.NavigatePrevious(_moduleCatalog.Navigation);
     }
 
     public void NavigateBack()
     {
-        if (_state.BackStack.Count == 0)
-        {
-            return;
-        }
-
-        _state.ActiveScreenId = _state.BackStack.Pop();
+        _navigation.NavigateBack();
     }
 
     public void ShowWarning(string message)
@@ -183,7 +153,7 @@ public sealed class WorkspaceApp
 
     public void Notify(string message, SeverityLevel severity)
     {
-        _state.Notifications.Add(new AppNotification(message, severity, _state.Now));
+        _notifications.Add(message, severity);
     }
 
     private static ScreenViewModel BuildBootScreen()

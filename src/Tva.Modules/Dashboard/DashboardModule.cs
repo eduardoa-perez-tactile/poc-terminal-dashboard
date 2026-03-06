@@ -1,31 +1,21 @@
-using Tva.Application;
+using Tva.Contracts;
 using Tva.Core;
 using Tva.Core.Ids;
 
 namespace Tva.Modules;
 
-public sealed class DashboardModule : IAppModule
+public sealed class DashboardModule : IModule
 {
-    public AppModuleInfo Metadata { get; } = new(
-        "dashboard",
-        "Dashboard",
-        "Landing workspace view with module summaries.",
-        "[H]");
+    public string Id => "dashboard";
 
-    public IReadOnlyList<NavigationEntry> NavigationEntries { get; } =
-    [
-        new("dashboard", ScreenCatalog.Home, "Home", "1", 10)
-    ];
+    public string DisplayName => "Dashboard";
 
-    public IReadOnlyList<IScreenProvider> Screens { get; } =
-    [
-        new HomeScreenProvider()
-    ];
-
-    public IReadOnlyList<PanelModel> GetDashboardPanels(AppSessionState state)
+    public void Register(IModuleContext context)
     {
-        return
-        [
+        context.RegisterNavigation(new NavigationEntry(Id, ScreenCatalog.Home, "Home", "1", 10));
+        context.RegisterScreen(ScreenCatalog.Home, new HomeScreenProvider());
+
+        context.RegisterDashboardPanel(state =>
             new PanelModel(
                 "Workspace",
                 [
@@ -33,25 +23,14 @@ public sealed class DashboardModule : IAppModule
                     $"Events buffered: {state.Events.Count}",
                     $"Wave samples: {state.WaveformSamples.Count}"
                 ],
-                PanelTone.Accent)
-        ];
-    }
+                PanelTone.Accent));
 
-    public IReadOnlyList<StatusItem> GetStatusItems(AppSessionState state)
-    {
-        return
-        [
-            new StatusItem("Mode", "Prototype")
-        ];
+        context.RegisterStatusItem(_ => new StatusItem("Mode", "Prototype"));
     }
 
     private sealed class HomeScreenProvider : IScreenProvider
     {
-        public ScreenId ScreenId => ScreenCatalog.Home;
-
-        public string ModuleId => "dashboard";
-
-        public ScreenViewModel Build(AppSessionState state)
+        public ScreenViewModel Create(IModuleState state)
         {
             var rows = new List<IReadOnlyList<string>>
             {

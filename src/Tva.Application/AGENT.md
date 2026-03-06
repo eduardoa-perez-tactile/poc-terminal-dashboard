@@ -1,12 +1,12 @@
 # AGENT.md (Tva.Application)
 
 ## Purpose
-- Application brain: orchestration, navigation state, module registry, session lifecycle, command execution abstraction.
+- Application brain: orchestration, navigation state, module catalog orchestration, session lifecycle, command execution abstraction.
 
 ## What Code Is Allowed Here
 - App state containers.
 - Orchestration services.
-- Module/screen abstraction interfaces.
+- App-facing service interfaces (`INavigationService`, `ISessionState`, `INotificationService`).
 - Shell execution abstraction and implementation.
 - Live update loop and mock data coordination.
 
@@ -17,6 +17,7 @@
 
 ## Dependencies Allowed
 - `Tva.Core`.
+- `Tva.Contracts`.
 - .NET BCL (`System.Diagnostics` etc.).
 
 ## Dependencies Forbidden
@@ -28,6 +29,7 @@
 - Prefer direct method calls and simple services over command buses.
 - Keep terminal execution behind `IShellExecutor`.
 - Maintain mutable session state in one place (`AppSessionState`).
+- Orchestrate feature modules through contracts only (`Tva.Contracts`).
 
 ## How AI Agents Should Add Features
 - Add new use-case services here.

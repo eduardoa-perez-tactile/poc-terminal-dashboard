@@ -15,7 +15,7 @@
 - Shell execution internals (belongs in `Tva.Application`).
 
 ## Dependencies Allowed
-- `Tva.Core`, `Tva.Application`, `Tva.Modules`, `Tva.Theme`.
+- `Tva.Core`, `Tva.Contracts`, `Tva.Application`, `Tva.Modules`, `Tva.Theme`.
 - `Spectre.Console`.
 
 ## Dependencies Forbidden

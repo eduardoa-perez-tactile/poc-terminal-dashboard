@@ -1,60 +1,40 @@
-using Tva.Application;
+using Tva.Contracts;
 using Tva.Core;
 using Tva.Core.Ids;
 
 namespace Tva.Modules;
 
-public sealed class TerminalModule : IAppModule
+public sealed class TerminalModule : IModule
 {
-    public AppModuleInfo Metadata { get; } = new(
-        "terminal",
-        "Terminal",
-        "Interactive shell command execution.",
-        "[T]");
+    public string Id => "terminal";
 
-    public IReadOnlyList<NavigationEntry> NavigationEntries { get; } =
-    [
-        new("terminal", ScreenCatalog.Terminal, "Terminal", "4", 40)
-    ];
+    public string DisplayName => "Terminal";
 
-    public IReadOnlyList<IScreenProvider> Screens { get; } =
-    [
-        new TerminalScreenProvider()
-    ];
-
-    public IReadOnlyList<PanelModel> GetDashboardPanels(AppSessionState state)
+    public void Register(IModuleContext context)
     {
-        return
-        [
+        context.RegisterNavigation(new NavigationEntry(Id, ScreenCatalog.Terminal, "Terminal", "4", 40));
+        context.RegisterScreen(ScreenCatalog.Terminal, new TerminalScreenProvider());
+
+        context.RegisterDashboardPanel(state =>
             new PanelModel(
                 "Shell",
                 [
                     $"Running: {(state.Terminal.IsRunning ? "yes" : "no")}",
                     $"Last exit: {state.Terminal.LastExitCode?.ToString() ?? "-"}",
-                    $"History size: {state.Terminal.History.Entries.Count}"
+                    $"History size: {state.Terminal.History.Count}"
                 ],
-                state.Terminal.IsRunning ? PanelTone.Warning : PanelTone.Normal)
-        ];
-    }
+                state.Terminal.IsRunning ? PanelTone.Warning : PanelTone.Normal));
 
-    public IReadOnlyList<StatusItem> GetStatusItems(AppSessionState state)
-    {
-        return
-        [
+        context.RegisterStatusItem(state =>
             new StatusItem(
                 "Shell",
                 state.Terminal.IsRunning ? "busy" : "idle",
-                state.Terminal.IsRunning ? SeverityLevel.Warning : SeverityLevel.Info)
-        ];
+                state.Terminal.IsRunning ? SeverityLevel.Warning : SeverityLevel.Info));
     }
 
     private sealed class TerminalScreenProvider : IScreenProvider
     {
-        public ScreenId ScreenId => ScreenCatalog.Terminal;
-
-        public string ModuleId => "terminal";
-
-        public ScreenViewModel Build(AppSessionState state)
+        public ScreenViewModel Create(IModuleState state)
         {
             var terminalVm = new TerminalViewModel(
                 "$",
@@ -62,7 +42,7 @@ public sealed class TerminalModule : IAppModule
                 state.Terminal.IsRunning,
                 state.Terminal.ActiveCommand,
                 state.Terminal.LastExitCode,
-                state.Terminal.History.Entries,
+                state.Terminal.History,
                 state.Terminal.Output);
 
             return new ScreenViewModel(

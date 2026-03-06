@@ -13,7 +13,7 @@ public sealed class TerminalCommandService
         _shellExecutor = shellExecutor;
     }
 
-    public async Task ExecuteAsync(AppSessionState state, string rawCommand, CancellationToken cancellationToken)
+    public async Task ExecuteAsync(ISessionState state, string rawCommand, CancellationToken cancellationToken)
     {
         var commandText = rawCommand.Trim();
         if (string.IsNullOrWhiteSpace(commandText))
@@ -70,7 +70,7 @@ public sealed class TerminalCommandService
         }
     }
 
-    private void AppendOutput(AppSessionState state, TerminalOutputChunk chunk)
+    private void AppendOutput(ISessionState state, TerminalOutputChunk chunk)
     {
         lock (_sync)
         {

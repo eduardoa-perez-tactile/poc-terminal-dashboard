@@ -1,10 +1,10 @@
-using Tva.Application;
+using Tva.Contracts;
 
 namespace Tva.Modules;
 
 public static class ModuleBootstrap
 {
-    public static IReadOnlyList<IAppModule> CreateModules()
+    public static IReadOnlyList<IModule> CreateModules()
     {
         return
         [

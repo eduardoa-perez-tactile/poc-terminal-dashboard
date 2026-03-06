@@ -1,62 +1,46 @@
-using Tva.Application;
+using Tva.Contracts;
 using Tva.Core;
 using Tva.Core.Ids;
 
 namespace Tva.Modules;
 
-public sealed class AlertsModule : IAppModule
+public sealed class AlertsModule : IModule
 {
-    public AppModuleInfo Metadata { get; } = new(
-        "alerts",
-        "Alerts",
-        "Warning and critical signal feed.",
-        "[A]");
+    public string Id => "alerts";
 
-    public IReadOnlyList<NavigationEntry> NavigationEntries { get; } =
-    [
-        new("alerts", ScreenCatalog.Alerts, "Alerts", "2", 20)
-    ];
+    public string DisplayName => "Alerts";
 
-    public IReadOnlyList<IScreenProvider> Screens { get; } =
-    [
-        new AlertsScreenProvider()
-    ];
-
-    public IReadOnlyList<PanelModel> GetDashboardPanels(AppSessionState state)
+    public void Register(IModuleContext context)
     {
-        var critical = state.Alerts.Count(alert => alert.Severity == SeverityLevel.Critical);
-        var warning = state.Alerts.Count(alert => alert.Severity == SeverityLevel.Warning);
+        context.RegisterNavigation(new NavigationEntry(Id, ScreenCatalog.Alerts, "Alerts", "2", 20));
+        context.RegisterScreen(ScreenCatalog.Alerts, new AlertsScreenProvider());
 
-        return
-        [
-            new PanelModel(
+        context.RegisterDashboardPanel(state =>
+        {
+            var critical = state.Alerts.Count(alert => alert.Severity == SeverityLevel.Critical);
+            var warning = state.Alerts.Count(alert => alert.Severity == SeverityLevel.Warning);
+
+            return new PanelModel(
                 "Alert Watch",
                 [
                     $"Critical: {critical}",
                     $"Warning: {warning}",
                     $"Latest: {state.Alerts.FirstOrDefault()?.Message ?? "none"}"
                 ],
-                critical > 0 ? PanelTone.Critical : PanelTone.Warning)
-        ];
-    }
+                critical > 0 ? PanelTone.Critical : PanelTone.Warning);
+        });
 
-    public IReadOnlyList<StatusItem> GetStatusItems(AppSessionState state)
-    {
-        var critical = state.Alerts.Count(alert => alert.Severity == SeverityLevel.Critical);
-        var severity = critical > 0 ? SeverityLevel.Critical : SeverityLevel.Info;
-        return
-        [
-            new StatusItem("Critical", critical.ToString(), severity)
-        ];
+        context.RegisterStatusItem(state =>
+        {
+            var critical = state.Alerts.Count(alert => alert.Severity == SeverityLevel.Critical);
+            var severity = critical > 0 ? SeverityLevel.Critical : SeverityLevel.Info;
+            return new StatusItem("Critical", critical.ToString(), severity);
+        });
     }
 
     private sealed class AlertsScreenProvider : IScreenProvider
     {
-        public ScreenId ScreenId => ScreenCatalog.Alerts;
-
-        public string ModuleId => "alerts";
-
-        public ScreenViewModel Build(AppSessionState state)
+        public ScreenViewModel Create(IModuleState state)
         {
             var rows = state.Alerts
                 .Take(24)
