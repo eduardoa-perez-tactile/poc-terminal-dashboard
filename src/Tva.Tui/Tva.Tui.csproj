@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Tva.Core\Tva.Core.csproj" />
+    <ProjectReference Include="..\Tva.Application\Tva.Application.csproj" />
+    <ProjectReference Include="..\Tva.Modules\Tva.Modules.csproj" />
+    <ProjectReference Include="..\Tva.Theme\Tva.Theme.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Spectre.Console" Version="0.49.1" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>
