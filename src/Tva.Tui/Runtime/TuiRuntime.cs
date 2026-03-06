@@ -20,6 +20,9 @@ public sealed class TuiRuntime
     public async Task RunAsync(CancellationToken cancellationToken = default)
     {
         _app.Initialize();
+        Console.BackgroundColor = ConsoleColor.Black;
+        Console.ForegroundColor = ConsoleColor.DarkYellow;
+        Console.Clear();
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var shouldExit = false;

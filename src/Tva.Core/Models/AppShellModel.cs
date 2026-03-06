@@ -6,6 +6,7 @@ public sealed record AppShellModel(
     ScreenId ActiveScreenId,
     IReadOnlyList<NavigationEntry> Navigation,
     ScreenViewModel ActiveScreen,
+    IReadOnlyList<AlertModel> RecentAlerts,
     IReadOnlyList<StatusItem> StatusItems,
     AppNotification? ActiveNotification,
     bool ShowWarning,
