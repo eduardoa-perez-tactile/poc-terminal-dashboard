@@ -176,7 +176,7 @@ public sealed class SpectreWorkspaceRenderer
 
     private static IRenderable BuildTimeline(AppShellModel shell, TimelineModel timeline)
     {
-        var graph = BuildLinePlot(timeline.Samples, timeline.Min, timeline.Max, 70, 7);
+        var graph = BuildBranchBarField(timeline.Samples, timeline.Min, timeline.Max, 70, 7);
         var meta = new Table
         {
             Border = TableBorder.None,
@@ -584,6 +584,84 @@ public sealed class SpectreWorkspaceRenderer
         }
 
         canvas[points[^1].Y, points[^1].X] = '●';
+
+        var lines = new string[height];
+        for (var y = 0; y < height; y++)
+        {
+            var row = new char[width];
+            for (var x = 0; x < width; x++)
+            {
+                row[x] = canvas[y, x];
+            }
+
+            lines[y] = new string(row).TrimEnd();
+        }
+
+        return string.Join("\n", lines);
+    }
+
+    private static string BuildBranchBarField(IReadOnlyList<int> samples, int min, int max, int width, int height)
+    {
+        if (samples.Count == 0)
+        {
+            return "·";
+        }
+
+        var canvas = new char[height, width];
+        for (var y = 0; y < height; y++)
+        {
+            for (var x = 0; x < width; x++)
+            {
+                canvas[y, x] = ' ';
+            }
+        }
+
+        var baseline = height / 2;
+        for (var x = 0; x < width; x++)
+        {
+            canvas[baseline, x] = '─';
+        }
+
+        var groupCount = Math.Min(5, Math.Max(3, samples.Count / 14));
+        var segmentWidth = Math.Max(10, width / (groupCount + 1));
+
+        for (var group = 0; group < groupCount; group++)
+        {
+            var sourceIndex = (int)Math.Round(group * (samples.Count - 1) / (double)Math.Max(groupCount - 1, 1));
+            var normalized = Math.Clamp(samples[sourceIndex], min, max);
+            var ratio = max == min ? 0.5 : (normalized - min) / (double)(max - min);
+            var branchHeight = Math.Max(1, (int)Math.Round(ratio * (height / 2d)));
+            var startX = 6 + group * segmentWidth;
+            var upStemX = Math.Min(startX + 2, width - 3);
+            var downStemX = Math.Min(startX + (segmentWidth / 2), width - 3);
+            var upTopY = Math.Max(0, baseline - branchHeight);
+            var downBottomY = Math.Min(height - 1, baseline + branchHeight);
+
+            for (var x = startX; x < Math.Min(startX + segmentWidth - 1, width); x++)
+            {
+                canvas[baseline, x] = '─';
+            }
+
+            for (var y = upTopY + 1; y < baseline; y++)
+            {
+                canvas[y, upStemX] = '│';
+            }
+
+            for (var y = baseline + 1; y < downBottomY; y++)
+            {
+                canvas[y, downStemX] = '│';
+            }
+
+            if (upTopY >= 0)
+            {
+                canvas[upTopY, upStemX] = '●';
+            }
+
+            if (downBottomY < height)
+            {
+                canvas[downBottomY, downStemX] = '●';
+            }
+        }
 
         var lines = new string[height];
         for (var y = 0; y < height; y++)
