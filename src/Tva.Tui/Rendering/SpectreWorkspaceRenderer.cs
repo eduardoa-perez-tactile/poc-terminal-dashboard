@@ -14,12 +14,12 @@ public sealed class SpectreWorkspaceRenderer
             .SplitRows(
                 new Layout("header").Size(3),
                 new Layout("body"),
-                new Layout("footer").Size(5));
+                new Layout("footer").Size(6));
 
         layout["body"].SplitColumns(
-            new Layout("nav").Size(30),
+            new Layout("nav").Size(28),
             new Layout("content"),
-            new Layout("rail").Size(36));
+            new Layout("rail").Size(34));
 
         layout["header"].Update(BuildHeader(shell));
         layout["nav"].Update(BuildNavigation(shell));
@@ -62,10 +62,19 @@ public sealed class SpectreWorkspaceRenderer
     {
         var lines = shell.Navigation.OrderBy(entry => entry.Order).Select(entry =>
         {
-            var label = $"{entry.Shortcut.PadLeft(2, '0')}  {ToHeaderLabel(entry.Label)}";
+            var icon = entry.ScreenId.Value switch
+            {
+                "home" => "▣",
+                "alerts" => "◇",
+                "events" => "◫",
+                "terminal" => "⌘",
+                "waveform" => "≈",
+                _ => "•"
+            };
+            var label = $"{icon}  {ToHeaderLabel(entry.Label)}";
             return entry.ScreenId == shell.ActiveScreenId
                 ? $"[black on {shell.Theme.Colors.Accent}] {Markup.Escape(label)} [/] "
-                : $"[{shell.Theme.Colors.Accent}]  {Markup.Escape(label)}[/]";
+                : $"[{shell.Theme.Colors.Accent}]{entry.Shortcut.PadLeft(2, '0')}[/]  [{shell.Theme.Colors.Foreground}]{Markup.Escape(label)}[/]";
         });
 
         var navBody = new Rows(
@@ -74,77 +83,28 @@ public sealed class SpectreWorkspaceRenderer
             new Markup($"[{shell.Theme.Colors.Muted}]TAB[/] cycle"),
             new Markup($"[{shell.Theme.Colors.Muted}]B[/] back  [{shell.Theme.Colors.Muted}]W[/] modal  [{shell.Theme.Colors.Muted}]Q[/] quit"));
 
-        return new Rows(
-            CreateFrame(shell, navBody, "Navigation"),
-            CreateFrame(shell, BuildSystemHealth(shell), "System Health"),
-            CreateFrame(
-                shell,
-                new Markup(
-                    $"[{shell.Theme.Colors.Muted}]AGENT_LINK:[/] [{shell.Theme.Colors.Foreground}]ENCRYPTED_LINE_8[/]\n" +
-                    $"[{shell.Theme.Colors.Muted}]SYNC_MODE:[/] [{shell.Theme.Colors.Highlight}]DATABASE_CONNECTED[/]"),
-                "Node Link"));
+        var layout = new Layout("nav-root");
+        layout.SplitRows(
+            new Layout("nav-main").Size(14),
+            new Layout("nav-space"),
+            new Layout("nav-health").Size(9));
+
+        layout["nav-main"].Update(CreateFrame(shell, navBody, "Navigation"));
+        layout["nav-health"].Update(CreateFrame(shell, BuildSystemHealth(shell), "System Health"));
+        layout["nav-space"].Update(new Text(string.Empty));
+        return layout;
     }
 
     private static IRenderable BuildContent(AppShellModel shell)
     {
-        var parts = new List<IRenderable>();
+        var layout = new Layout("content-root");
+        layout.SplitRows(
+            new Layout("hero").Size(13),
+            new Layout("manager"));
 
-        parts.Add(BuildScreenBanner(shell));
-
-        if (shell.ShowWarning && !string.IsNullOrWhiteSpace(shell.WarningMessage))
-        {
-            parts.Add(
-                CreateFrame(
-                    shell,
-                    new Markup($"[{shell.Theme.Colors.Warning}]TEMPORAL_WARNING:[/] {Markup.Escape(shell.WarningMessage)}"),
-                    "Override",
-                    titleColor: shell.Theme.Colors.Warning));
-        }
-
-        if (shell.ActiveScreen.Timeline is not null)
-        {
-            parts.Add(BuildTimeline(shell, shell.ActiveScreen.Timeline));
-        }
-
-        if (shell.ActiveScreen.Panels.Count > 0)
-        {
-            var panelRenderables = shell.ActiveScreen.Panels.Select(panelModel => BuildPanel(shell, panelModel)).ToArray();
-            parts.Add(new Columns(panelRenderables) { Expand = true });
-        }
-
-        if (shell.ActiveScreen.Terminal is not null)
-        {
-            parts.Add(BuildTerminal(shell, shell.ActiveScreen.Terminal));
-        }
-
-        if (shell.ActiveScreen.Table is not null)
-        {
-            parts.Add(BuildTable(shell, shell.ActiveScreen.Table));
-        }
-
-        if (shell.ActiveScreen.Alerts.Count > 0)
-        {
-            parts.Add(BuildAlerts(shell, shell.ActiveScreen.Alerts));
-        }
-
-        if (shell.ActiveScreen.LogLines.Count > 0)
-        {
-            var logLines = shell.ActiveScreen.LogLines.Take(ThemeConventions.MaxEventLines).Select(line =>
-                $"[{shell.Theme.Colors.Foreground}]{Markup.Escape(line)}[/]");
-            parts.Add(CreateFrame(shell, new Markup(string.Join("\n", logLines)), "Logs"));
-        }
-
-        if (!string.IsNullOrWhiteSpace(shell.ActiveScreen.Hint))
-        {
-            parts.Add(
-                CreateFrame(
-                    shell,
-                    new Markup($"[{shell.Theme.Colors.Muted}]OP_NOTE:[/] {Markup.Escape(shell.ActiveScreen.Hint)}"),
-                    "Operator Note",
-                    titleColor: shell.Theme.Colors.Muted));
-        }
-
-        return new Rows(parts.ToArray());
+        layout["hero"].Update(BuildHeroPanel(shell));
+        layout["manager"].Update(BuildManagerPanel(shell));
+        return layout;
     }
 
     private static IRenderable BuildPanel(AppShellModel shell, PanelModel panelModel)
@@ -216,7 +176,7 @@ public sealed class SpectreWorkspaceRenderer
 
     private static IRenderable BuildTimeline(AppShellModel shell, TimelineModel timeline)
     {
-        var sparkline = BuildSparkline(timeline.Samples, timeline.Min, timeline.Max, 72);
+        var graph = BuildLinePlot(timeline.Samples, timeline.Min, timeline.Max, 70, 7);
         var meta = new Table
         {
             Border = TableBorder.None,
@@ -227,16 +187,16 @@ public sealed class SpectreWorkspaceRenderer
         meta.AddColumn(string.Empty);
         meta.AddColumn(string.Empty);
         meta.AddRow(
-            new Markup($"[{shell.Theme.Colors.Muted}]LIVE_VIEW:[/] [{shell.Theme.Colors.Accent}]{timeline.Samples.Count}_SAMPLES[/]"),
-            Align.Right(new Markup($"[{shell.Theme.Colors.Muted}]CURRENT_T_INDEX:[/] [{shell.Theme.Colors.Accent}]{timeline.Samples.LastOrDefault():000}[/]")));
+            new Markup($"[{shell.Theme.Colors.Muted}]LIVE VIEW:[/] [{shell.Theme.Colors.Accent}]{Math.Max(timeline.Samples.Count / 5, 1)} ACTIVE BRANCHES[/]"),
+            Align.Right(new Markup($"[{shell.Theme.Colors.Muted}]CURRENT T INDEX:[/] [{shell.Theme.Colors.Accent}]{timeline.Samples.LastOrDefault():000}[/]")));
         meta.AddRow(
-            new Markup($"[{shell.Theme.Colors.Accent}]{Markup.Escape(sparkline)}[/]"),
+            new Markup($"[{shell.Theme.Colors.Accent}]{Markup.Escape(graph)}[/]"),
             new Text(string.Empty));
         meta.AddRow(
             new Markup($"[{shell.Theme.Colors.Muted}]T_MINUS_24H[/]"),
-            Align.Right(new Markup($"[{shell.Theme.Colors.Muted}]MIN:[/] {timeline.Min}  [{shell.Theme.Colors.Muted}]MAX:[/] {timeline.Max}")));
+            Align.Right(new Markup($"[{shell.Theme.Colors.Muted}]CURRENT INDEX:[/] [{shell.Theme.Colors.Accent}]{timeline.Samples.LastOrDefault():000}[/]")));
 
-        return CreateFrame(shell, meta, timeline.Title);
+        return CreateFrame(shell, meta, "Deployment Branch History");
     }
 
     private static IRenderable BuildTerminal(AppShellModel shell, TerminalViewModel terminal)
@@ -269,18 +229,32 @@ public sealed class SpectreWorkspaceRenderer
 
     private static IRenderable BuildRail(AppShellModel shell)
     {
-        return new Rows(
-            BuildTicketRail(shell),
-            BuildWatchPanel(shell));
+        return BuildTicketRail(shell);
     }
 
     private static IRenderable BuildFooter(AppShellModel shell)
     {
+        var layout = new Layout("footer-root");
+        layout.SplitRows(
+            new Layout("log").Size(3),
+            new Layout("menu").Size(2));
+
         var feedMessage = shell.ActiveNotification is not null
-            ? $"{shell.ActiveNotification.CreatedAt:HH:mm:ss} :: {shell.ActiveNotification.Message}"
+            ? $"{shell.ActiveNotification.CreatedAt:HH:mm:ss}  AUTH_SUCCESS: {shell.ActiveNotification.Message}"
             : shell.RecentAlerts.FirstOrDefault() is { } alert
-                ? $"{alert.Timestamp:HH:mm:ss} :: {alert.Message}"
-                : "NOMINAL_FEED :: no active anomalies";
+                ? $"{alert.Timestamp:HH:mm:ss}  WARN: {alert.Message}"
+                : "NOMINAL FEED: no active anomalies";
+
+        var logStrip = new Table
+        {
+            Border = TableBorder.None,
+            Expand = true
+        };
+
+        logStrip.HideHeaders();
+        logStrip.AddColumn(string.Empty);
+        logStrip.AddRow(new Markup($"[{shell.Theme.Colors.Foreground}]{Markup.Escape(feedMessage)}[/]"));
+        layout["log"].Update(CreateFrame(shell, logStrip, "System Log Feed", titleColor: shell.Theme.Colors.Warning));
 
         var menu = new Table
         {
@@ -292,39 +266,11 @@ public sealed class SpectreWorkspaceRenderer
         menu.AddColumn(string.Empty);
         menu.AddColumn(string.Empty);
         menu.AddRow(
-            new Markup($"[{shell.Theme.Colors.Highlight}]SYSTEM_LOG_FEED[/] [{shell.Theme.Colors.Foreground}]{Markup.Escape(feedMessage)}[/]"),
-            Align.Right(
-                new Markup(
-                    $"[{shell.Theme.Colors.Accent}]FILE[/]  [{shell.Theme.Colors.Accent}]EDIT[/]  [{shell.Theme.Colors.Accent}]VIEW[/]  " +
-                    $"[{shell.Theme.Colors.Accent}]MODE[/]  [{shell.Theme.Colors.Accent}]HELP[/]")));
-        menu.AddRow(
-            new Markup(BuildStatusSummary(shell)),
-            Align.Right(
-                new Markup(
-                    $"[{shell.Theme.Colors.Muted}]ENCRYPTED_LINE_8[/]  [{shell.Theme.Colors.Muted}]DATABASE_CONNECTED[/]")));
+            new Markup($"[{shell.Theme.Colors.Accent}]FILE[/]   [{shell.Theme.Colors.Accent}]EDIT[/]   [{shell.Theme.Colors.Accent}]VIEW[/]   [{shell.Theme.Colors.Accent}]MODE[/]   [{shell.Theme.Colors.Accent}]HELP[/]"),
+            Align.Right(new Markup($"[{shell.Theme.Colors.Muted}]⌁ ENCRYPTED_LINE_8[/]   [{shell.Theme.Colors.Muted}]▤ DATABASE_CONNECTED[/]")));
+        layout["menu"].Update(menu);
 
-        return CreateFrame(shell, menu, "Status Bus", titleColor: shell.Theme.Colors.Muted);
-    }
-
-    private static IRenderable BuildScreenBanner(AppShellModel shell)
-    {
-        var header = new Table
-        {
-            Border = TableBorder.None,
-            Expand = true
-        };
-
-        header.HideHeaders();
-        header.AddColumn(string.Empty);
-        header.AddColumn(string.Empty);
-        header.AddRow(
-            new Markup($"[{shell.Theme.Colors.Highlight}]{Markup.Escape(ToHeaderLabel(shell.ActiveScreen.Title))}[/]"),
-            Align.Right(new Markup($"[{shell.Theme.Colors.Muted}]ACTIVE SCREEN:[/] [{shell.Theme.Colors.Accent}]{Markup.Escape(ToHeaderLabel(shell.ActiveScreenId.Value))}[/]")));
-        header.AddRow(
-            new Markup($"[{shell.Theme.Colors.Muted}]{Markup.Escape(ToHeaderLabel(shell.ActiveScreen.Subtitle))}[/]"),
-            Align.Right(new Markup($"[{shell.Theme.Colors.Muted}]MODULES ONLINE:[/] [{shell.Theme.Colors.Accent}]{shell.Navigation.Count:00}[/]")));
-
-        return CreateFrame(shell, header, shell.ActiveScreen.Title);
+        return layout;
     }
 
     private static IRenderable BuildSystemHealth(AppShellModel shell)
@@ -332,14 +278,12 @@ public sealed class SpectreWorkspaceRenderer
         var alerts = Math.Clamp(GetStatusInt(shell, "Alerts", 0), 0, 100);
         var critical = Math.Clamp(GetStatusInt(shell, "Critical", 0) * 20, 0, 100);
         var pulse = Math.Clamp(GetStatusInt(shell, "Pulse", 58), 0, 100);
-        var shellBusy = string.Equals(GetStatusValue(shell, "Shell", "idle"), "busy", StringComparison.OrdinalIgnoreCase) ? 92 : 18;
 
         var lines = new[]
         {
-            $"[{shell.Theme.Colors.Muted}]ALERT_LOAD[/]    [{shell.Theme.Colors.Foreground}]{BuildMeter(alerts, 18)}[/] [{shell.Theme.Colors.Accent}]{alerts,3}%[/]",
-            $"[{shell.Theme.Colors.Muted}]CRITICAL[/]      [{shell.Theme.Colors.Foreground}]{BuildMeter(critical, 18)}[/] [{ColorForSeverity(shell, critical > 0 ? SeverityLevel.Critical : SeverityLevel.Info)}]{critical,3}%[/]",
-            $"[{shell.Theme.Colors.Muted}]PULSE_SYNC[/]    [{shell.Theme.Colors.Foreground}]{BuildMeter(pulse, 18)}[/] [{shell.Theme.Colors.Accent}]{pulse,3}%[/]",
-            $"[{shell.Theme.Colors.Muted}]SHELL_BUSY[/]    [{shell.Theme.Colors.Foreground}]{BuildMeter(shellBusy, 18)}[/] [{(shellBusy > 50 ? shell.Theme.Colors.Warning : shell.Theme.Colors.Highlight)}]{shellBusy,3}%[/]"
+            $"[{shell.Theme.Colors.Muted}]ALERT LOAD[/]\n[{shell.Theme.Colors.Accent}]{BuildMeter(alerts, 16)}[/] [{shell.Theme.Colors.Highlight}]{alerts,3}%[/]",
+            $"[{shell.Theme.Colors.Muted}]PULSE SYNC[/]\n[{shell.Theme.Colors.Accent}]{BuildMeter(pulse, 16)}[/] [{shell.Theme.Colors.Highlight}]{pulse,3}%[/]",
+            $"[{shell.Theme.Colors.Muted}]CRITICAL[/]\n[{shell.Theme.Colors.Accent}]{BuildMeter(critical, 16)}[/] [{ColorForSeverity(shell, critical > 0 ? SeverityLevel.Critical : SeverityLevel.Info)}]{critical,3}%[/]"
         };
 
         return new Markup(string.Join("\n\n", lines));
@@ -359,37 +303,140 @@ public sealed class SpectreWorkspaceRenderer
         var tickets = shell.RecentAlerts.Take(4).Select(alert =>
         {
             var color = ColorForSeverity(shell, alert.Severity);
-            var body = new Markup(
-                $"[{shell.Theme.Colors.Accent}]#{alert.Timestamp:HHmmss}[/]  [{color}]{Markup.Escape(alert.Severity.ToString().ToUpperInvariant())}[/]\n" +
-                $"[{shell.Theme.Colors.Foreground}]{Markup.Escape(ToHeaderLabel(alert.Source))}[/]\n" +
-                $"[{shell.Theme.Colors.Muted}]{Markup.Escape(alert.Message)}[/]\n" +
-                $"[{shell.Theme.Colors.Muted}]STAMP:[/] [{shell.Theme.Colors.Highlight}]{alert.Timestamp:HH:mm:ss}[/]");
-            return CreateFrame(shell, body, "Ticket", titleColor: color);
+            return (IRenderable)new Markup(
+                $"[{shell.Theme.Colors.Accent}]#{alert.Timestamp:HHmmss}[/]                                            [{color}]{Markup.Escape(alert.Severity.ToString().ToUpperInvariant())}[/]\n" +
+                $"[{shell.Theme.Colors.Foreground}]{Markup.Escape(ToSignalLabel(alert.Message))}[/]\n" +
+                $"[{shell.Theme.Colors.Muted}]REPORTER:[/] [{shell.Theme.Colors.Foreground}]{Markup.Escape(ToHeaderLabel(alert.Source))}[/]          [{shell.Theme.Colors.Muted}]{FormatAge(alert.Timestamp)}[/]");
         });
 
         return CreateFrame(
             shell,
-            new Rows(tickets.ToArray()),
+            new Rows(InterleaveWithRules(tickets.ToArray(), shell.Theme.Colors.Border)),
             "Active Tickets",
-            $"{shell.RecentAlerts.Count:00} Pending");
+            $"{shell.RecentAlerts.Count:00} Pending",
+            titleColor: shell.Theme.Colors.Warning);
     }
 
-    private static IRenderable BuildWatchPanel(AppShellModel shell)
+    private static IRenderable BuildHeroPanel(AppShellModel shell)
     {
-        var lines = shell.StatusItems.Select(item =>
+        if (shell.ShowWarning && !string.IsNullOrWhiteSpace(shell.WarningMessage))
         {
-            var color = ColorForSeverity(shell, item.Severity);
-            return $"[{shell.Theme.Colors.Muted}]{Markup.Escape(ToHeaderLabel(item.Key))}:[/] [{color}]{Markup.Escape(item.Value)}[/]";
-        }).ToList();
-
-        if (shell.ActiveNotification is not null)
-        {
-            var color = ColorForSeverity(shell, shell.ActiveNotification.Severity);
-            lines.Add(string.Empty);
-            lines.Add($"[{shell.Theme.Colors.Muted}]NOTICE:[/] [{color}]{Markup.Escape(shell.ActiveNotification.Message)}[/]");
+            return CreateFrame(
+                shell,
+                new Markup($"[{shell.Theme.Colors.Warning}]TEMPORAL WARNING:[/] {Markup.Escape(shell.WarningMessage)}"),
+                "Override",
+                titleColor: shell.Theme.Colors.Warning);
         }
 
-        return CreateFrame(shell, new Markup(string.Join("\n", lines)), "Watch Channel");
+        if (shell.ActiveScreen.Timeline is not null)
+        {
+            return BuildTimeline(shell, shell.ActiveScreen.Timeline);
+        }
+
+        var summary = new Table
+        {
+            Border = TableBorder.None,
+            Expand = true
+        };
+
+        summary.HideHeaders();
+        summary.AddColumn(string.Empty);
+        summary.AddColumn(string.Empty);
+        summary.AddRow(
+            new Markup($"[{shell.Theme.Colors.Highlight}]{Markup.Escape(ToSignalLabel(shell.ActiveScreen.Title))}[/]"),
+            Align.Right(new Markup($"[{shell.Theme.Colors.Muted}]ACTIVE SCREEN:[/] [{shell.Theme.Colors.Accent}]{Markup.Escape(ToSignalLabel(shell.ActiveScreenId.Value))}[/]")));
+        summary.AddRow(
+            new Markup($"[{shell.Theme.Colors.Foreground}]{Markup.Escape(shell.ActiveScreen.Subtitle)}[/]"),
+            Align.Right(new Markup($"[{shell.Theme.Colors.Muted}]MODULES ONLINE:[/] [{shell.Theme.Colors.Accent}]{shell.Navigation.Count:00}[/]")));
+
+        return CreateFrame(shell, summary, "Deployment Branch History");
+    }
+
+    private static IRenderable BuildManagerPanel(AppShellModel shell)
+    {
+        if (shell.ActiveScreen.Terminal is not null)
+        {
+            return BuildTerminal(shell, shell.ActiveScreen.Terminal);
+        }
+
+        var body = new Rows(
+            BuildProcessManagerTable(shell),
+            new Text(string.Empty),
+            BuildOperatorLog(shell));
+
+        return CreateFrame(shell, body, "AI Process Manager", "Active Agents: 4   Queue Depth: 0");
+    }
+
+    private static IRenderable BuildProcessManagerTable(AppShellModel shell)
+    {
+        var alerts = Math.Clamp(GetStatusInt(shell, "Alerts", 0), 0, 99);
+        var pulse = Math.Clamp(GetStatusInt(shell, "Pulse", 50), 0, 100);
+        var critical = GetStatusInt(shell, "Critical", 0);
+        var rows = new[]
+        {
+            new ProcessRow("MINUTEMAN_01", $"PARSING_{ToSignalLabel(shell.ActiveScreen.Title)}_LOGS", Math.Clamp(35 + alerts * 4, 0, 99), critical > 0 ? "WORKING" : "IDLE", shell.Theme.Colors.Highlight),
+            new ProcessRow("HE_WHO_REMAINS_BOT", "MERGING_SYNTHETIC_BRANCHES", Math.Clamp(20 + pulse / 2, 0, 99), "WORKING", shell.Theme.Colors.Highlight),
+            new ProcessRow("MISS_MINUTES_AI", $"OPTIMIZING_{ToSignalLabel(shell.ActiveScreenId.Value)}_AURA", 100, "IDLE", shell.Theme.Colors.Muted),
+            new ProcessRow("LOKI_AGENT_S2", "DEBUGGING_GLITCH_IN_THE_SYSTEM", critical > 0 ? 0 : 64, critical > 0 ? "FAULTED" : "WORKING", critical > 0 ? shell.Theme.Colors.Critical : shell.Theme.Colors.Warning)
+        };
+
+        var table = new Table
+        {
+            Border = TableBorder.None,
+            Expand = true
+        };
+
+        table.HideHeaders();
+        table.AddColumn(string.Empty);
+        table.AddColumn(string.Empty);
+        table.AddColumn(string.Empty);
+        table.AddColumn(string.Empty);
+        table.AddRow(
+            $"[{shell.Theme.Colors.Muted}]AGENT ID[/]",
+            $"[{shell.Theme.Colors.Muted}]TASK DESCRIPTION[/]",
+            $"[{shell.Theme.Colors.Muted}]PROGRESS[/]",
+            $"[{shell.Theme.Colors.Muted}]STATUS[/]");
+
+        foreach (var row in rows)
+        {
+            var progress = row.Progress == 0
+                ? $"[{shell.Theme.Colors.Muted}]ERROR[/]"
+                : $"[{shell.Theme.Colors.Accent}]{BuildProgressBar(row.Progress, 12)}[/] [{shell.Theme.Colors.Highlight}]{row.Progress}%[/]";
+
+            table.AddRow(
+                $"[{shell.Theme.Colors.Foreground}]{row.AgentId}[/]",
+                $"[{shell.Theme.Colors.Foreground}]{Markup.Escape(row.Task)}[/]",
+                progress,
+                $"[{row.StatusColor}]{row.Status}[/]");
+        }
+
+        return table;
+    }
+
+    private static IRenderable BuildOperatorLog(AppShellModel shell)
+    {
+        var lines = new List<string>();
+
+        if (!string.IsNullOrWhiteSpace(shell.ActiveScreen.Hint))
+        {
+            lines.Add($"[{shell.Theme.Colors.Muted}]OP NOTE:[/] [{shell.Theme.Colors.Foreground}]{Markup.Escape(shell.ActiveScreen.Hint)}[/]");
+        }
+
+        lines.AddRange(shell.ActiveScreen.Panels
+            .SelectMany(panel => panel.Lines)
+            .Take(2)
+            .Select(line => $"[{shell.Theme.Colors.Muted}]TRACE:[/] [{shell.Theme.Colors.Foreground}]{Markup.Escape(line)}[/]"));
+
+        lines.AddRange(shell.ActiveScreen.LogLines
+            .Take(2)
+            .Select(line => $"[{shell.Theme.Colors.Muted}]LOG:[/] [{shell.Theme.Colors.Foreground}]{Markup.Escape(line)}[/]"));
+
+        if (lines.Count == 0)
+        {
+            lines.Add($"[{shell.Theme.Colors.Muted}]OP NOTE:[/] [{shell.Theme.Colors.Foreground}]SYNTHETIC CONTROL LOOP IS NOMINAL.[/]");
+        }
+
+        return new Markup(string.Join("\n", lines));
     }
 
     private static Panel CreateFrame(
@@ -472,6 +519,85 @@ public sealed class SpectreWorkspaceRenderer
         var clamped = Math.Clamp(value, 0, 100);
         var filled = (int)Math.Round(clamped / 100d * width);
         return new string('█', filled) + new string('░', Math.Max(width - filled, 0));
+    }
+
+    private static string BuildProgressBar(int value, int width)
+    {
+        var clamped = Math.Clamp(value, 0, 100);
+        var filled = (int)Math.Round(clamped / 100d * width);
+        return new string('━', filled) + new string('─', Math.Max(width - filled, 0));
+    }
+
+    private static string BuildLinePlot(IReadOnlyList<int> samples, int min, int max, int width, int height)
+    {
+        if (samples.Count == 0)
+        {
+            return "·";
+        }
+
+        var canvas = new char[height, width];
+        for (var y = 0; y < height; y++)
+        {
+            for (var x = 0; x < width; x++)
+            {
+                canvas[y, x] = ' ';
+            }
+        }
+
+        var baseline = height / 2;
+        for (var x = 0; x < width; x++)
+        {
+            canvas[baseline, x] = '─';
+        }
+
+        var points = new (int X, int Y)[width];
+        for (var x = 0; x < width; x++)
+        {
+            var index = (int)Math.Round(x * (samples.Count - 1) / (double)Math.Max(width - 1, 1));
+            var normalized = Math.Clamp(samples[index], min, max);
+            var ratio = max == min ? 0.5 : (normalized - min) / (double)(max - min);
+            var y = height - 1 - (int)Math.Round(ratio * (height - 1));
+            points[x] = (x, y);
+        }
+
+        for (var i = 0; i < points.Length - 1; i++)
+        {
+            var current = points[i];
+            var next = points[i + 1];
+            var dx = next.X - current.X;
+            var dy = next.Y - current.Y;
+            var steps = Math.Max(Math.Abs(dx), Math.Abs(dy));
+
+            for (var step = 0; step <= steps; step++)
+            {
+                var x = current.X + (int)Math.Round(step * dx / (double)Math.Max(steps, 1));
+                var y = current.Y + (int)Math.Round(step * dy / (double)Math.Max(steps, 1));
+                canvas[y, x] = dy switch
+                {
+                    > 0 => '╲',
+                    < 0 => '╱',
+                    _ => '─'
+                };
+            }
+
+            canvas[current.Y, current.X] = '●';
+        }
+
+        canvas[points[^1].Y, points[^1].X] = '●';
+
+        var lines = new string[height];
+        for (var y = 0; y < height; y++)
+        {
+            var row = new char[width];
+            for (var x = 0; x < width; x++)
+            {
+                row[x] = canvas[y, x];
+            }
+
+            lines[y] = new string(row).TrimEnd();
+        }
+
+        return string.Join("\n", lines);
     }
 
     private static string BuildSparkline(IReadOnlyList<int> samples, int min, int max, int width)
@@ -566,4 +692,37 @@ public sealed class SpectreWorkspaceRenderer
             _ => shell.Theme.Colors.Foreground
         };
     }
+
+    private static IRenderable[] InterleaveWithRules(IRenderable[] items, string color)
+    {
+        var result = new List<IRenderable>();
+        for (var i = 0; i < items.Length; i++)
+        {
+            result.Add(items[i]);
+            if (i < items.Length - 1)
+            {
+                result.Add(new Rule().RuleStyle(CreateStyle(color)));
+            }
+        }
+
+        return result.ToArray();
+    }
+
+    private static string FormatAge(DateTimeOffset timestamp)
+    {
+        var delta = DateTimeOffset.Now - timestamp;
+        if (delta.TotalMinutes < 1)
+        {
+            return "NOW";
+        }
+
+        if (delta.TotalHours < 1)
+        {
+            return $"{(int)delta.TotalMinutes}M AGO";
+        }
+
+        return $"{(int)delta.TotalHours}H AGO";
+    }
+
+    private sealed record ProcessRow(string AgentId, string Task, int Progress, string Status, string StatusColor);
 }
