@@ -79,6 +79,7 @@ public sealed class WorkspaceApp
             _state.ActiveScreenId,
             _moduleCatalog.Navigation,
             activeScreen,
+            _state.Alerts.Take(6).ToList(),
             statusItems,
             _notifications.Latest,
             _state.ShowWarning,
