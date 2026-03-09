@@ -15,7 +15,11 @@ public sealed class TerminalModule : IModule
         context.RegisterNavigation(new NavigationEntry(Id, ScreenCatalog.Terminal, "Terminal", "4", 40));
         context.RegisterScreen(ScreenCatalog.Terminal, new TerminalScreenProvider());
 
-        context.RegisterDashboardPanel(state =>
+        context.RegisterDashboardPanel(
+            "terminal-status",
+            DashboardRegion.Footer,
+            70,
+            state =>
             new PanelModel(
                 "Shell",
                 [
@@ -48,7 +52,7 @@ public sealed class TerminalModule : IModule
             return new ScreenViewModel(
                 ScreenCatalog.Terminal,
                 "Terminal",
-                "Command execution via OS shell",
+                "Dedicated in-app shell for local commands",
                 [
                     new PanelModel(
                         "Shortcuts",
@@ -64,7 +68,7 @@ public sealed class TerminalModule : IModule
                 [],
                 null,
                 terminalVm,
-                "Use this screen like a lightweight iTerm-style pane.");
+                "Runs shell commands inside the app using the application shell executor.");
         }
     }
 }

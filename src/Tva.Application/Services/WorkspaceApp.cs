@@ -75,7 +75,7 @@ public sealed class WorkspaceApp
 
         return new AppShellModel(
             "TVA Workspace Prototype",
-            "Retro command nexus",
+            "Software engineer daily operations dashboard",
             _state.ActiveScreenId,
             _moduleCatalog.Navigation,
             activeScreen,
@@ -167,15 +167,15 @@ public sealed class WorkspaceApp
                 new PanelModel(
                     "Initialization",
                     [
-                        "Loading module graph...",
-                        "Hydrating telemetry channels...",
-                        "Priming shell subsystem..."
+                        "Loading operational modules...",
+                        "Refreshing workspace datasources...",
+                        "Priming in-app terminal..."
                     ],
                     PanelTone.Accent)
             ],
             null,
             [],
-            ["Stand by. Transition to dashboard imminent."],
+            ["Stand by. Transition to the engineer dashboard is imminent."],
             null,
             null,
             "Boot automatically advances to Home.");

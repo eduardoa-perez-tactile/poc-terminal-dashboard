@@ -65,10 +65,13 @@ public sealed class SpectreWorkspaceRenderer
             var icon = entry.ScreenId.Value switch
             {
                 "home" => "▣",
-                "alerts" => "◇",
-                "events" => "◫",
+                "work-queue" => "◇",
+                "coding" => "◫",
                 "terminal" => "⌘",
-                "waveform" => "≈",
+                "change-delivery" => "⇡",
+                "reviews" => "✓",
+                "communications" => "✉",
+                "work-log" => "✎",
                 _ => "•"
             };
             var label = $"{icon}  {ToHeaderLabel(entry.Label)}";
@@ -152,7 +155,7 @@ public sealed class SpectreWorkspaceRenderer
         var table = new Table
         {
             Border = TableBorder.Square,
-            Title = CreateTableTitle(shell, "ACTIVE TICKETS", shell.Theme.Colors.Warning),
+            Title = CreateTableTitle(shell, "ATTENTION QUEUE", shell.Theme.Colors.Warning),
             Expand = true
         };
         table.BorderStyle = CreateStyle(shell.Theme.Colors.Border);
@@ -276,14 +279,14 @@ public sealed class SpectreWorkspaceRenderer
     private static IRenderable BuildSystemHealth(AppShellModel shell)
     {
         var alerts = Math.Clamp(GetStatusInt(shell, "Alerts", 0), 0, 100);
-        var critical = Math.Clamp(GetStatusInt(shell, "Critical", 0) * 20, 0, 100);
-        var pulse = Math.Clamp(GetStatusInt(shell, "Pulse", 58), 0, 100);
+        var reviews = Math.Clamp(GetStatusInt(shell, "Reviews", 0) * 20, 0, 100);
+        var ready = Math.Clamp(GetStatusInt(shell, "Ready", 0) * 20, 0, 100);
 
         var lines = new[]
         {
             $"[{shell.Theme.Colors.Muted}]ALERT LOAD[/]\n[{shell.Theme.Colors.Accent}]{BuildMeter(alerts, 16)}[/] [{shell.Theme.Colors.Highlight}]{alerts,3}%[/]",
-            $"[{shell.Theme.Colors.Muted}]PULSE SYNC[/]\n[{shell.Theme.Colors.Accent}]{BuildMeter(pulse, 16)}[/] [{shell.Theme.Colors.Highlight}]{pulse,3}%[/]",
-            $"[{shell.Theme.Colors.Muted}]CRITICAL[/]\n[{shell.Theme.Colors.Accent}]{BuildMeter(critical, 16)}[/] [{ColorForSeverity(shell, critical > 0 ? SeverityLevel.Critical : SeverityLevel.Info)}]{critical,3}%[/]"
+            $"[{shell.Theme.Colors.Muted}]REVIEWS[/]\n[{shell.Theme.Colors.Accent}]{BuildMeter(reviews, 16)}[/] [{shell.Theme.Colors.Highlight}]{reviews,3}%[/]",
+            $"[{shell.Theme.Colors.Muted}]READY TO SHIP[/]\n[{shell.Theme.Colors.Accent}]{BuildMeter(ready, 16)}[/] [{ColorForSeverity(shell, ready > 0 ? SeverityLevel.Info : SeverityLevel.Warning)}]{ready,3}%[/]"
         };
 
         return new Markup(string.Join("\n\n", lines));
@@ -296,7 +299,7 @@ public sealed class SpectreWorkspaceRenderer
             return CreateFrame(
                 shell,
                 new Markup($"[{shell.Theme.Colors.Muted}]NO_ACTIVE_TICKETS[/]"),
-                "Active Tickets",
+                "Attention Queue",
                 "00 Pending");
         }
 
@@ -312,8 +315,8 @@ public sealed class SpectreWorkspaceRenderer
         return CreateFrame(
             shell,
             new Rows(InterleaveWithRules(tickets.ToArray(), shell.Theme.Colors.Border)),
-            "Active Tickets",
-            $"{shell.RecentAlerts.Count:00} Pending",
+            "Attention Queue",
+            $"{shell.RecentAlerts.Count:00} Active",
             titleColor: shell.Theme.Colors.Warning);
     }
 
@@ -349,7 +352,7 @@ public sealed class SpectreWorkspaceRenderer
             new Markup($"[{shell.Theme.Colors.Foreground}]{Markup.Escape(shell.ActiveScreen.Subtitle)}[/]"),
             Align.Right(new Markup($"[{shell.Theme.Colors.Muted}]MODULES ONLINE:[/] [{shell.Theme.Colors.Accent}]{shell.Navigation.Count:00}[/]")));
 
-        return CreateFrame(shell, summary, "Deployment Branch History");
+        return CreateFrame(shell, summary, "Workspace Overview");
     }
 
     private static IRenderable BuildManagerPanel(AppShellModel shell)
@@ -359,12 +362,44 @@ public sealed class SpectreWorkspaceRenderer
             return BuildTerminal(shell, shell.ActiveScreen.Terminal);
         }
 
-        var body = new Rows(
-            BuildProcessManagerTable(shell),
-            new Text(string.Empty),
-            BuildOperatorLog(shell));
+        var sections = new List<IRenderable>();
 
-        return CreateFrame(shell, body, "AI Process Manager", "Active Agents: 4   Queue Depth: 0");
+        if (shell.ActiveScreen.Table is not null && shell.ActiveScreen.Panels.Count > 0)
+        {
+            var grid = new Grid();
+            grid.AddColumn();
+            grid.AddColumn();
+            grid.AddRow(
+                BuildTable(shell, shell.ActiveScreen.Table),
+                BuildPanelDeck(shell, shell.ActiveScreen.Panels));
+            sections.Add(grid);
+        }
+        else
+        {
+            if (shell.ActiveScreen.Table is not null)
+            {
+                sections.Add(BuildTable(shell, shell.ActiveScreen.Table));
+            }
+
+            if (shell.ActiveScreen.Panels.Count > 0)
+            {
+                sections.Add(BuildPanelDeck(shell, shell.ActiveScreen.Panels));
+            }
+        }
+
+        if (shell.ActiveScreen.Alerts.Count > 0)
+        {
+            sections.Add(BuildAlerts(shell, shell.ActiveScreen.Alerts));
+        }
+
+        sections.Add(CreateFrame(shell, BuildOperatorLog(shell), "Activity"));
+
+        if (sections.Count == 1)
+        {
+            return sections[0];
+        }
+
+        return new Rows(sections.ToArray());
     }
 
     private static IRenderable BuildProcessManagerTable(AppShellModel shell)
@@ -411,6 +446,24 @@ public sealed class SpectreWorkspaceRenderer
         }
 
         return table;
+    }
+
+    private static IRenderable BuildPanelDeck(AppShellModel shell, IReadOnlyList<PanelModel> panels)
+    {
+        var renderedPanels = panels
+            .Take(4)
+            .Select(panel => (IRenderable)BuildPanel(shell, panel))
+            .ToArray();
+
+        if (renderedPanels.Length == 0)
+        {
+            return CreateFrame(
+                shell,
+                new Markup($"[{shell.Theme.Colors.Muted}]NO_MODULE_PANELS_AVAILABLE[/]"),
+                "Panels");
+        }
+
+        return new Rows(renderedPanels);
     }
 
     private static IRenderable BuildOperatorLog(AppShellModel shell)

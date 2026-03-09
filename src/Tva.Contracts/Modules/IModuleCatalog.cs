@@ -8,6 +8,6 @@ public interface IModuleCatalog
     IReadOnlyList<NavigationEntry> Navigation { get; }
 
     ScreenViewModel BuildScreen(ScreenId screenId, IModuleState state);
-    IReadOnlyList<PanelModel> BuildDashboardPanels(IModuleState state);
+    IReadOnlyList<DashboardPanelModel> BuildDashboardPanels(IModuleState state);
     IReadOnlyList<StatusItem> BuildStatusItems(IModuleState state);
 }

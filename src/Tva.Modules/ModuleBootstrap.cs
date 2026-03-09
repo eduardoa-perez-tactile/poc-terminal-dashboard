@@ -9,10 +9,13 @@ public static class ModuleBootstrap
         return
         [
             new DashboardModule(),
-            new AlertsModule(),
-            new EventsModule(),
+            new WorkQueueModule(),
+            new CodingSessionModule(),
             new TerminalModule(),
-            new WaveformModule()
+            new ChangeDeliveryModule(),
+            new ReviewQueueModule(),
+            new CommunicationsModule(),
+            new WorkLogModule()
         ];
     }
 }

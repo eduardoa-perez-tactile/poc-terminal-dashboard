@@ -112,11 +112,11 @@ public sealed class TuiRuntime
                 return false;
             case ConsoleKey.D2:
             case ConsoleKey.NumPad2:
-                _app.NavigateTo(ScreenCatalog.Alerts);
+                _app.NavigateTo(ScreenCatalog.WorkQueue);
                 return false;
             case ConsoleKey.D3:
             case ConsoleKey.NumPad3:
-                _app.NavigateTo(ScreenCatalog.Events);
+                _app.NavigateTo(ScreenCatalog.Coding);
                 return false;
             case ConsoleKey.D4:
             case ConsoleKey.NumPad4:
@@ -124,7 +124,19 @@ public sealed class TuiRuntime
                 return false;
             case ConsoleKey.D5:
             case ConsoleKey.NumPad5:
-                _app.NavigateTo(ScreenCatalog.Waveform);
+                _app.NavigateTo(ScreenCatalog.ChangeDelivery);
+                return false;
+            case ConsoleKey.D6:
+            case ConsoleKey.NumPad6:
+                _app.NavigateTo(ScreenCatalog.Reviews);
+                return false;
+            case ConsoleKey.D7:
+            case ConsoleKey.NumPad7:
+                _app.NavigateTo(ScreenCatalog.Communications);
+                return false;
+            case ConsoleKey.D8:
+            case ConsoleKey.NumPad8:
+                _app.NavigateTo(ScreenCatalog.WorkLog);
                 return false;
         }
 

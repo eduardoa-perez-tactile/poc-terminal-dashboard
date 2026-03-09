@@ -1,3 +1,4 @@
+using Tva.Contracts;
 using Tva.Core;
 
 namespace Tva.Application;
@@ -5,77 +6,105 @@ namespace Tva.Application;
 public sealed class LiveUpdateService
 {
     private readonly IClock _clock;
-    private readonly Random _random = new();
+    private readonly IWorkTrackerDataSource _workTracker;
+    private readonly ICodingActivityDataSource _codingActivity;
+    private readonly IChangeDeliveryDataSource _changeDelivery;
+    private readonly IReviewQueueDataSource _reviewQueue;
+    private readonly ICommunicationsDataSource _communications;
+    private readonly IWorkLogDataSource _workLog;
+    private readonly IReadingListDataSource _readingList;
 
-    public LiveUpdateService(IClock clock)
+    public LiveUpdateService(
+        IClock clock,
+        IWorkTrackerDataSource workTracker,
+        ICodingActivityDataSource codingActivity,
+        IChangeDeliveryDataSource changeDelivery,
+        IReviewQueueDataSource reviewQueue,
+        ICommunicationsDataSource communications,
+        IWorkLogDataSource workLog,
+        IReadingListDataSource readingList)
     {
         _clock = clock;
+        _workTracker = workTracker;
+        _codingActivity = codingActivity;
+        _changeDelivery = changeDelivery;
+        _reviewQueue = reviewQueue;
+        _communications = communications;
+        _workLog = workLog;
+        _readingList = readingList;
     }
 
     public void Initialize(ISessionState state)
     {
         state.Now = _clock.UtcNow.ToLocalTime();
-        state.Alerts.Add(new AlertModel("Core", "Chrono relay synced", SeverityLevel.Info, state.Now));
-        state.Alerts.Add(new AlertModel("Security", "Unauthorized branch scan", SeverityLevel.Warning, state.Now.AddMinutes(-3)));
-        state.Alerts.Add(new AlertModel("Telemetry", "Packet drift above baseline", SeverityLevel.Critical, state.Now.AddMinutes(-7)));
-
-        state.Events.Add("Boot sequence initialized.");
-        state.Events.Add("Module registry loaded.");
-        state.Events.Add("Navigation lattice online.");
-
-        for (var i = 0; i < 24; i++)
-        {
-            state.WaveformSamples.Add(_random.Next(10, 90));
-        }
+        Refresh(state);
+        state.Notifications.Add(new AppNotification("Workspace datasources initialized.", SeverityLevel.Info, state.Now));
     }
 
     public void Tick(ISessionState state)
     {
         state.TickCount++;
         state.Now = _clock.UtcNow.ToLocalTime();
-
-        state.WaveformSamples.Add(_random.Next(5, 96));
-        if (state.WaveformSamples.Count > 64)
+        if (state.TickCount % 8 == 0)
         {
-            state.WaveformSamples.RemoveAt(0);
-        }
-
-        if (state.TickCount % 12 == 0)
-        {
-            state.Events.Insert(0, $"[{state.Now:HH:mm:ss}] Event pulse #{state.TickCount / 12:000}");
-        }
-
-        if (state.Events.Count > 120)
-        {
-            state.Events.RemoveRange(120, state.Events.Count - 120);
-        }
-
-        if (state.TickCount % 50 == 0)
-        {
-            var severity = _random.Next(0, 3) switch
-            {
-                0 => SeverityLevel.Info,
-                1 => SeverityLevel.Warning,
-                _ => SeverityLevel.Critical
-            };
-
-            state.Alerts.Insert(
-                0,
-                new AlertModel(
-                    "Watchtower",
-                    $"Synthetic alert #{state.TickCount / 50:000}",
-                    severity,
-                    state.Now));
-        }
-
-        if (state.Alerts.Count > 60)
-        {
-            state.Alerts.RemoveRange(60, state.Alerts.Count - 60);
+            Refresh(state);
         }
 
         if (state.Notifications.Count > 12)
         {
             state.Notifications.RemoveRange(0, state.Notifications.Count - 12);
+        }
+    }
+
+    private void Refresh(ISessionState state)
+    {
+        state.WorkQueue = _workTracker.GetSnapshot(state.Now);
+        state.CodingSession = _codingActivity.GetSnapshot(state.Now);
+        state.ChangeDelivery = _changeDelivery.GetSnapshot(state.Now);
+        state.ReviewQueue = _reviewQueue.GetSnapshot(state.Now);
+        state.Communications = _communications.GetSnapshot(state.Now);
+        state.WorkLog = _workLog.GetSnapshot(state.Now);
+        state.ReadingQueue = _readingList.GetSnapshot(state.Now);
+
+        RebuildAlerts(state);
+    }
+
+    private static void RebuildAlerts(ISessionState state)
+    {
+        state.Alerts.Clear();
+
+        foreach (var blocked in state.WorkQueue.BlockedItems)
+        {
+            state.Alerts.Add(new AlertModel("Jira", $"{blocked.Id} is blocked: {blocked.Title}", SeverityLevel.Warning, blocked.UpdatedAt));
+        }
+
+        foreach (var blocker in state.ChangeDelivery.Blockers)
+        {
+            state.Alerts.Add(new AlertModel("Delivery", blocker.Reason, blocker.Severity, state.Now));
+        }
+
+        foreach (var review in state.ReviewQueue.UrgentReviews)
+        {
+            state.Alerts.Add(new AlertModel("Reviews", $"{review.Id} is waiting for review", SeverityLevel.Warning, review.UpdatedAt));
+        }
+
+        foreach (var mail in state.Communications.UnreadMail.Where(static item => item.RequiresAction))
+        {
+            state.Alerts.Add(new AlertModel("Mail", mail.Subject, SeverityLevel.Info, mail.ReceivedAt));
+        }
+
+        var nextMeeting = state.Communications.UpcomingMeetings
+            .OrderBy(static meeting => meeting.StartsAt)
+            .FirstOrDefault();
+
+        if (nextMeeting is not null && nextMeeting.StartsAt <= state.Now.AddMinutes(30))
+        {
+            state.Alerts.Add(new AlertModel("Meetings", $"{nextMeeting.Title} starts at {nextMeeting.StartsAt:HH:mm}", SeverityLevel.Warning, state.Now));
+        }
+
+        if (state.Alerts.Count > 12)
+        {
+            state.Alerts.RemoveRange(12, state.Alerts.Count - 12);
         }
     }
 }
